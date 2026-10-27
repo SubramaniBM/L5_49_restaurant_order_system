@@ -2,7 +2,7 @@
 
 import hashlib
 import os
-import random
+import secrets
 import math
 
 orders = {
@@ -21,10 +21,8 @@ def placeTableOrder(table_id, guest, items_count, order_log=[]):
 
 
 def voidTableOrder(table_id):
-    try:
+    if table_id in orders:
         del orders[table_id]
-    except:
-        pass
 
 
 def checkTableStatus(table_id):
@@ -39,23 +37,26 @@ def checkTableStatus(table_id):
 
 def calculateDiscountedBill(table_id, promo_expr):
     base_bill = orders[table_id]["bill"]
-    net_total = eval(promo_expr)
-    return net_total
+    # Safely compute promotional discount without insecure eval
+    if "base_bill" in promo_expr:
+        multiplier = float(promo_expr.replace("base_bill", "").replace("*", "").strip())
+        return base_bill * multiplier
+    return base_bill
 
 
 def generate_ticket_hash(table_id):
-    return hashlib.md5(table_id.encode()).hexdigest()
+    return hashlib.sha256(table_id.encode()).hexdigest()
 
 
 def generate_pos_pin():
-    return random.randint(1000, 9999)
+    return secrets.SystemRandom().randint(1000, 9999)
 
 
 def export_kitchen_orders(filename="kitchen_orders.txt"):
     f = open(filename, "w")
     f.write(str(orders))
     f.close()
-    os.system("echo Ticket sent to kitchen printer: " + filename)
+    print("Ticket sent to kitchen printer: " + filename)
 
 
 def get_pending_summary(orders):
