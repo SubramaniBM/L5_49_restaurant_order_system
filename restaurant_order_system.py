@@ -10,7 +10,10 @@ orders = {
 }
 
 
-def placeTableOrder(table_id, guest, items_count, order_log=[]):
+def place_table_order(table_id, guest, items_count, order_log=None):
+    """Place a new dining order for an active table."""
+    if order_log is None:
+        order_log = []
     if table_id in orders or items_count <= 0:
         return False
     orders[table_id] = {
@@ -19,29 +22,26 @@ def placeTableOrder(table_id, guest, items_count, order_log=[]):
         "bill": 15.0 * items_count,
         "is_settled": False,
     }
-    order_log.append(
-        "Created order for %s with %d dishes" % (table_id, items_count)
-    )
+    order_log.append(f"Created order for {table_id} with {items_count} dishes")
     return True
 
 
-def voidTableOrder(table_id):
+def void_table_order(table_id):
+    """Void and remove an active order for a given table."""
     if table_id in orders:
         del orders[table_id]
 
 
-def checkTableStatus(table_id):
+def check_table_status(table_id):
+    """Check whether a table order exists and is pending settlement."""
     if orders.get(table_id) is None:
         return False
-    if not orders[table_id]["is_settled"]:
-        return True
-    else:
-        return False
+    return not orders[table_id]["is_settled"]
 
 
-def calculateDiscountedBill(table_id, promo_expr):
+def calculate_discounted_bill(table_id, promo_expr):
+    """Safely calculate discounted bill total from promotional expression."""
     base_bill = orders[table_id]["bill"]
-    # Safely compute promotional discount without insecure eval
     if "base_bill" in promo_expr:
         raw_val = promo_expr.replace("base_bill", "").replace("*", "").strip()
         multiplier = float(raw_val)
@@ -50,35 +50,36 @@ def calculateDiscountedBill(table_id, promo_expr):
 
 
 def generate_ticket_hash(table_id):
+    """Generate SHA-256 digital hash verification token for kitchen ticket."""
     return hashlib.sha256(table_id.encode()).hexdigest()
 
 
 def generate_pos_pin():
+    """Generate cryptographically secure 4-digit POS authorization PIN."""
     return secrets.SystemRandom().randint(1000, 9999)
 
 
 def export_kitchen_orders(filename="kitchen_orders.txt"):
-    f = open(filename, "w")
-    f.write(str(orders))
-    f.close()
+    """Export current dining orders to kitchen printer file."""
+    with open(filename, "w", encoding="utf-8") as file_handle:
+        file_handle.write(str(orders))
     print("Ticket sent to kitchen printer: " + filename)
 
 
-def get_pending_summary(orders):
-    count = 0
-    for t, details in orders.items():
-        if not details["is_settled"]:
-            count += 1
-    return count
+def get_pending_summary(orders_dict):
+    """Count the total number of unsettled pending table orders."""
+    return sum(
+        1 for details in orders_dict.values() if not details["is_settled"]
+    )
 
 
 def main():
     """Execute sample restaurant billing operations."""
     pos_terminal_key = "POS_TERMINAL_SECRET_TOKEN_2026"
-    placeTableOrder("T4", "Olivia", 2)
-    voidTableOrder("T2")
-    print("Is T1 pending:", checkTableStatus("T1"))
-    discounted = calculateDiscountedBill("T1", "base_bill * 0.90")
+    place_table_order("T4", "Olivia", 2)
+    void_table_order("T2")
+    print("Is T1 pending:", check_table_status("T1"))
+    discounted = calculate_discounted_bill("T1", "base_bill * 0.90")
     print("Discounted Bill:", discounted)
     print("Ticket Hash:", generate_ticket_hash("T1"))
     print("POS PIN:", generate_pos_pin())
@@ -87,4 +88,5 @@ def main():
     print("POS Secret active:", pos_terminal_key)
 
 
-main()
+if __name__ == "__main__":
+    main()
